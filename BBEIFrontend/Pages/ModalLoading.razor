@@ -1,0 +1,25 @@
+﻿@using Newtonsoft.Json;
+<div class="modal-overlay" style="display: @(IsModalOpen ? "block" : "none")">
+    <div class="modal-content">
+        <h4>Loading..</h4>
+        <br>
+        <br>
+        <div class="spinner"></div>
+    </div>
+</div>
+
+@code {
+    private bool IsModalOpen = false;
+
+    public void ShowModal()
+    {
+        IsModalOpen = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void CloseModal()
+    {
+        IsModalOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+}

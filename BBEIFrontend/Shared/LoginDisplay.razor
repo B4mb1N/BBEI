@@ -1,0 +1,39 @@
+﻿@inject AuthenticationStateProvider AuthenticationStateProvider
+@using BBEIDataAccess.Models
+@using BBEIFrontend.Pages
+@using System.Security.Claims
+@using Serilog
+<AuthorizeView>
+    <Authorized>
+        @if (!string.IsNullOrEmpty(context.User.Identity.Name))
+        {
+            userName = context.User.Identity.Name;
+        }
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        Logged in as&nbsp;<b>@context.User.Identity.Name</b>
+        <form method="post" action="Identity/Account/LogOut">
+            <button type="submit" class="nav-link btn btn-link">Log out</button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <a href="/login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private ClaimsPrincipal? user { get; set; }
+    private string userName = "";
+    private GestoreDb? gestoreDb;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            gestoreDb = new GestoreDb();
+            StateHasChanged();
+        }
+    }
+}

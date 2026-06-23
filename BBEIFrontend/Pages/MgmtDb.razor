@@ -1,0 +1,148 @@
+﻿@page "/dbmanagement"
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using BBEIDataAccess
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+
+<div class="content px-4">
+    <h1>Database Management</h1>
+
+    <AuthorizeView Roles="ADMIN">
+        <Authorized>
+            <select @onchange="OnTableSelected" class="form-control">
+                <option value="">Select a table</option>
+                @foreach (var tableName in tableNames)
+                {
+                    <option value="@tableName">@tableName</option>
+                }
+            </select>
+
+            @if (selectedTable != null)
+            {
+                <input type="text" class="form-control" @bind="query" />
+                <button @onclick="() => Exec()">Exec</button>
+
+                <table class="adminTable">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            @foreach (var column in tableColumns)
+                            {
+                                <th>@column</th>
+                            }
+                            <th>Actions</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            @foreach (var column in tableColumns)
+                            {
+                                <td><input @bind="newRow[column]" /></td>
+                            }
+                            <td><button @onclick="InsertRow">Insert</button></td>
+                            <td></td>
+                        </tr>
+                        @foreach (var row in tableData)
+                        {
+                            <tr>
+                                <td><button @onclick="() => SaveRow(row)">Save</button></td>
+                                <td><button @onclick="() => DeleteRow(row)">Delete</button></td>
+                                @foreach (var column in tableColumns)
+                                {
+                                    <td><input @bind="row[column]" /></td>
+                                }
+                                <td><button @onclick="() => SaveRow(row)">Save</button></td>
+                                <td><button @onclick="() => DeleteRow(row)">Delete</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <p>Non hai accesso a questa parte della pagina perchè non fai parte del ruolo ADMIN.</p>
+        </NotAuthorized>
+    </AuthorizeView>
+    <br />
+</div>
+
+@code {
+    private ClaimsPrincipal user { get; set; }
+    private List<string> tableNames = new List<string>();
+    private string selectedTable;
+    private List<Dictionary<string, string>> tableData = new();
+    private List<string> tableColumns = new List<string>();
+    private Dictionary<string, string> newRow = new Dictionary<string, string>();
+    private GestoreDb gestoreDb;
+    private string query = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+
+        if (!user.Identity.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            gestoreDb = new();
+            tableNames = gestoreDb.getTableList();
+        }
+    }
+
+    private async Task OnTableSelected(ChangeEventArgs e)
+    {
+        selectedTable = e.Value.ToString();
+        if (!string.IsNullOrEmpty(selectedTable))
+        {
+            tableData = gestoreDb.loadTableData(selectedTable, out tableColumns);
+            newRow = tableColumns.ToDictionary(column => column, column => "");
+        }
+    }
+
+    private async Task Exec()
+    {
+        // Implementa la logica per salvare la riga modificata nel database
+        var r = gestoreDb.execQuery(selectedTable, query);
+        if (r)
+        {
+            query = "";
+            if (!string.IsNullOrEmpty(selectedTable))
+            {
+                tableData = gestoreDb.loadTableData(selectedTable, out tableColumns);
+                newRow = tableColumns.ToDictionary(column => column, column => "");
+            }
+        }
+    }
+
+    private async Task SaveRow(Dictionary<string, string> row)
+    {
+        // Implementa la logica per salvare la riga modificata nel database
+        var r = gestoreDb.updateRow(selectedTable, row);
+    }
+
+    private async Task InsertRow()
+    {
+        gestoreDb.insertRow(selectedTable, newRow);
+        tableData = gestoreDb.loadTableData(selectedTable, out tableColumns);
+        newRow = tableColumns.ToDictionary(column => column, column => "");
+    }
+
+    private async Task DeleteRow(Dictionary<string, string> row)
+    {
+        if (row.ContainsKey("Id"))
+        {
+            int id = Convert.ToInt32(row["Id"]);
+            gestoreDb.deleteRow(selectedTable, id);
+            tableData = gestoreDb.loadTableData(selectedTable, out tableColumns);
+        }
+    }
+    
+}

@@ -1,0 +1,214 @@
+﻿@page "/usermanagement"
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using Microsoft.AspNetCore.Authorization
+@using System.Threading;
+@using System.Security.Claims;
+@using System.Runtime.InteropServices;
+@using System.Reflection;
+@using BBEIFrontend;
+@using BBEILib;
+@using Serilog;
+
+@implements IDisposable;
+
+<h1>User management</h1>
+
+<div class="content px-4">
+
+
+
+    @if (DisplayUserInfo == null)
+    {
+        <p><em>Error occurred... please reload the page!</em></p>
+    }
+    else
+    {
+        <div>
+            <table class="basicTableAdmin">
+                <thead>
+                    <tr>
+                        <th>UserName</th>
+                        <th>Nome</th>
+                        <th>Email secondaria</th>
+                        <th>Numero di telefono</th>
+                        <th>Ruolo</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var di in DisplayUserInfo)
+                    {
+                        <tr>
+                            <td>@di.UserName</td>
+                            <td>@di.Name</td>
+                            <td>@di.SecondaryEmail</td>
+                            <td>@di.PhoneNumber</td>
+                            <td>@di.Role</td>
+                            <td>
+                                <button @onclick="() => editUser(di)"><span>Edit</span></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <table class="btnTable">
+                <thead>
+                    <tr>
+                        <th>
+                            <AuthorizeView Roles="ADMIN">
+                                <Authorized>
+                                    <button class="btn-menu btn_blue" @onmousedown="(e) => AddUser()"><span>ADD<br>USER</span></button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </th>
+                        <th>
+                            <AuthorizeView Roles="ADMIN, MANTAINER">
+                                <Authorized>
+                                    <button class="btn-menu btn_blue" @onmousedown="(e) => DoRefresh()"><span>REFRESH<br /> TABLE</span></button>
+                                </Authorized>
+                            </AuthorizeView>
+                        </th>
+                        <th>
+
+                        </th>
+                        <th>
+
+                        </th>
+                        <th>
+
+                        </th>
+                        <th>
+
+                        </th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <br />
+    }
+
+</div>
+
+
+<ModalShowUserAdd @ref="modalShowUserAdd" OnSave="SaveCloseModal" />
+<ModalShowUserEdit @ref="modalShowUserEdit" OnSave="SaveCloseModal" />
+
+@code {
+    private ClaimsPrincipal? user { get; set; }
+    private UserInfo? duiMaster { get; set; }
+    private ModalShowUserAdd? modalShowUserAdd;
+    private ModalShowUserEdit? modalShowUserEdit;
+    private GestoreDb? gestoreDb;
+
+    private int refreshSecs = 60; //3600;
+    List<UserInfo>? DisplayUserInfo { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+
+        DisplayUserInfo = new();
+
+        if (!user.Identity.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            gestoreDb = new GestoreDb();
+            DisplayUserInfo = gestoreDb.SRMGetVisibleUsersForIdentity(user);
+            foreach (UserInfo dui in DisplayUserInfo)
+            {
+                if (dui.UserName == user.Identity.Name)
+                {
+                    duiMaster = dui;
+                }
+            }
+        }
+    }
+
+
+    public void Dispose()
+    {
+
+    }
+
+
+    private void UpdateData(object state)
+    {
+        Program.LastRefresh_DisplayGui = DateTime.Now;
+        InvokeAsync(StateHasChanged);
+
+    }
+
+    private async Task DoRefresh()
+    {
+
+        try
+        {
+            DisplayUserInfo = gestoreDb.SRMGetVisibleUsersForIdentity(user);
+            foreach (UserInfo dui in DisplayUserInfo)
+            {
+                if (dui.UserName == user.Identity.Name)
+                {
+                    duiMaster = dui;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("DoRefresh error: " + ex.Message);
+        }
+
+        //Richiedi l'aggiornamento del componente
+        StateHasChanged();
+    }
+
+    private async Task AddUser()
+    {
+        try
+        {
+            modalShowUserAdd.ShowModal(user);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("AddUser error: " + ex.Message);
+        }
+
+        //Aggiornamento condizioni utenti dopo eventuale modifica
+        DisplayUserInfo = gestoreDb.SRMGetVisibleUsersForIdentity(user);
+
+        //Richiedi l'aggiornamento del componente
+        StateHasChanged();
+
+    }
+
+    private async Task editUser(UserInfo duiUser)
+    {
+        try
+        {
+            modalShowUserEdit.ShowModal(duiUser, duiMaster);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("AddUser error: " + ex.Message);
+        }
+
+        //Aggiornamento condizioni utenti dopo eventuale modifica
+        DisplayUserInfo = gestoreDb.SRMGetVisibleUsersForIdentity(user);
+
+        //Richiedi l'aggiornamento del componente
+        StateHasChanged();
+    }
+
+    private void SaveCloseModal()
+    {
+        DoRefresh();
+        StateHasChanged();
+    }
+
+}
+
+

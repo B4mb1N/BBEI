@@ -1,0 +1,268 @@
+﻿@using System.Security.Claims;
+@using Serilog;
+@using System.Globalization;
+@using System.Text.RegularExpressions;
+@using Microsoft.AspNetCore.Identity
+@using System.ComponentModel.DataAnnotations
+@using BBEIDataAccess;
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+<div class="modal-overlay" style="display: @(IsModalOpen ? "block" : "none")" @onclick="CloseModal">
+    <div class="modal-content" style="top: 10%; max-width: 1200px;" @onclick:stopPropagation>
+        <div class="closeIcon"><span class="oi oi-x" aria-hidden="true" @onclick="CloseModal"></span></div>
+        <h4>First access password change</h4>
+
+        @* <h1>
+        @if (owner != null)
+        {
+        @owner.Identity.Name;
+        }
+        </h1> *@
+        @if (user != null)
+        {
+            <div>
+                <div>
+                    <label style="width: 200px;">
+                        Old password:
+                    </label>
+                    <input type="password" disabled="@controlsDisabled" @bind="oldPassword" @oninput="HandleUserPasswordInput" />
+                </div>
+                <div>
+                    <label style="width: 200px;">
+                        New password:
+                    </label>
+                    <input type="password" disabled="@controlsDisabled" @bind="newPassword" @oninput="HandleUserPasswordInput" />
+                </div>
+                <div>
+                    <label style="width: 200px;">
+                        Confirm new password:
+                    </label>
+                    <input type="password" disabled="@controlsDisabled" @bind="newPasswordConfirm" @oninput="HandleUserPasswordInput" />
+                </div>
+                <div>
+                    <button class="btn-menu btn_blue" disabled="@controlsDisabled" @onclick="ChangePassword"><span>CHANGE<br>PASSWORD</span></button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+
+@code {
+    private ApplicationUser? user;
+    private string userPassword { get; set; } = "";
+    private string oldPassword { get; set; } = "";
+    private string newPassword { get; set; } = "";
+    private string newPasswordConfirm { get; set; } = "";
+    private GestoreDb? gestoreDb;
+
+    private bool IsModalOpen = false;
+
+    private bool controlsDisabled;
+
+    @inject IJSRuntime JsRuntime
+
+    public void ShowModal(ApplicationUser myUser, string existingPassword)
+    {
+        IsModalOpen = true;
+        user = myUser;
+        userPassword = existingPassword;
+        oldPassword = "";
+        newPassword = "";
+        newPasswordConfirm = "";
+        gestoreDb = new();
+        controlsDisabled = false;
+
+        StateHasChanged();
+    }
+
+    public void CloseModal()
+    {
+        IsModalOpen = false;
+        user = null;
+        userPassword = "";
+        gestoreDb = null;
+        controlsDisabled = false;
+        StateHasChanged();
+    }
+
+    private void HandleUserPasswordInput()
+    {
+        try
+        {
+
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Add user page HandleUserPassword error: " + ex.Message);
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        //freeze dei controlli
+        controlsDisabled = true;
+        bool shutDown = false;
+
+        try
+        {
+
+            await Task.Delay(1);
+
+            bool oldPwdOk = false;
+            bool newPwdOk = false;
+            bool newPwdConfirm = false;
+            if (string.Compare(userPassword, oldPassword) == 0)
+            {
+                //Password di autenticazione uguale a quella vecchia confermata
+                oldPwdOk = true;
+            }
+
+            if (string.Compare(newPassword, newPasswordConfirm) == 0)
+            {
+                newPwdConfirm = true;
+                if (isValidPassword(newPassword))
+                {
+                    newPwdOk = true;
+                }
+            }
+
+            if (oldPwdOk && newPwdOk && newPwdConfirm)
+            {
+                //Tutto ok, possiamo procedere alla creazione dell'utente
+                if (gestoreDb == null)
+                {
+                    gestoreDb = new();
+                }
+
+                Task<bool> creationTask = Task.Run(() => gestoreDb.SRMUserChangePasswordOnFirstAccess(UserManager, user.UserName, newPassword));
+                Task.WaitAll(creationTask);
+
+                if (creationTask != null)
+                {
+                    if (creationTask.Result)
+                    {
+                        JsRuntime.InvokeVoidAsync("alert", "Password change successful"); // Alert
+                        shutDown = true;
+                    }
+                    else
+                    {
+                        JsRuntime.InvokeVoidAsync("alert", "Password change failed!"); // Alert
+                    }
+                }
+                else
+                {
+                    JsRuntime.InvokeVoidAsync("alert", "Password change failed!"); // Alert
+                }
+            }
+            else
+            {
+                //Qualcosa non va
+                //Creo messaggio di errore
+                string errMsg = "";
+                if (!oldPwdOk)
+                {
+                    errMsg = "Old password does not match with existing password!\n";
+                }
+                if (!newPwdOk)
+                {
+                    errMsg = errMsg + "New password does not match security: should be at least 10 chars long including numbers, uppercases, lowercases and special characters!";
+                }
+                if (!newPwdConfirm)
+                {
+                    errMsg = errMsg + "New password does not match with its confirmation!\n";
+                }
+
+                JsRuntime.InvokeVoidAsync("alert", errMsg); // Alert
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+            Log.Error("First Access Change Password error: " + ex.Message);
+        }
+
+        //scongelamento dei controlli
+        controlsDisabled = false;
+        //Richiedi l'aggiornamento del componente
+        StateHasChanged();
+
+        if (shutDown)
+        {
+            CloseModal();
+        }
+
+
+    }
+
+    private bool isValidPassword(string pwd)
+    {
+        bool bRet = false;
+        try
+        {
+            var hasNumber = new Regex(@"[0-9]+");
+            var hasLowerChars = new Regex(@"[a-z]+");
+            var hasUpperChar = new Regex(@"[A-Z]+");
+            var hasMinimum10Chars = new Regex(@".{10,}");
+            var hasSymbols = new Regex(@"[!@#$%^&*()_+=\[{\]};:<>|./?,-]");
+
+            bRet = hasNumber.IsMatch(pwd) && hasUpperChar.IsMatch(pwd) && hasMinimum10Chars.IsMatch(pwd) && hasSymbols.IsMatch(pwd);
+        }
+        catch (Exception)
+        {
+            bRet = false;
+        }
+        return bRet;
+    }
+
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        try
+        {
+            // Normalize the domain
+            email = Regex.Replace(email, @"(@)(.+)$", DomainMapper,
+                                  RegexOptions.None, TimeSpan.FromMilliseconds(200));
+
+            // Examines the domain part of the email and normalizes it.
+            string DomainMapper(Match match)
+            {
+                // Use IdnMapping class to convert Unicode domain names.
+                var idn = new IdnMapping();
+
+                // Pull out and process domain name (throws ArgumentException on invalid)
+                string domainName = idn.GetAscii(match.Groups[2].Value);
+
+                return match.Groups[1].Value + domainName;
+            }
+        }
+        catch (RegexMatchTimeoutException e)
+        {
+            return false;
+        }
+        catch (ArgumentException e)
+        {
+            return false;
+        }
+
+        try
+        {
+            return Regex.IsMatch(email,
+                @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return false;
+        }
+    }
+}
+

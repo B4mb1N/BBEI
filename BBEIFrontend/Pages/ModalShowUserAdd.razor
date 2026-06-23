@@ -1,0 +1,389 @@
+﻿@using BBEIFrontend;
+@using System.Security.Claims;
+@using Serilog;
+@using System.Globalization;
+@using System.Text.RegularExpressions;
+
+<div class="modal-overlay" style="display: @(IsModalOpen ? "block" : "none")" @onclick="CloseModal">
+    <div class="modal-content" style="top: 10%; max-width: 1200px;" @onclick:stopPropagation>
+        <div class="closeIcon"><span class="oi oi-x" aria-hidden="true" @onclick="CloseModal"></span></div>
+        <h4>Create new user</h4>
+        <br />
+        @* <h1>
+        @if (owner != null)
+        {
+        @owner.Identity.Name;
+        }
+        </h1> *@
+        @if (owner != null)
+        {
+            <div>
+                <div>
+                    <label>
+                        User's email:
+                        <input type="text" disabled="@controlsDisabled" @bind="userEmail" />
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        User's password:
+                        <input type="text" @bind="userPassword" disabled />
+                        <button @onmousedown="(e) => CompileNewPassword()"><span>Generate</span></button>
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        User's secondary email:
+                        <input type="text" disabled="@controlsDisabled" @bind="userSecEmail" />
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        User's full name:
+                        <input type="text" disabled="@controlsDisabled" @bind="userFullName" />
+                    </label>
+                </div>
+                <div>
+                    <label>
+                        User's phone number:
+                        +39 <input type="text" disabled="@controlsDisabled" @bind="userPhoneNumber" pattern="?[0-9]" />
+                    </label>
+                </div>
+                <div>
+
+                    <label>Role:</label>
+
+                    <label>
+                        <input type="radio" disabled="@controlsDisabled" name="role" value=USER checked="@isUser" @onchange="() => HandleRadioButtonChange(USER)">
+                        @USER
+                    </label>
+
+
+                    @if (owner.IsInRole("ADMIN"))
+                    {
+                        //Amministratore, può creare admin e mantainer
+
+                        <label>
+                            &nbsp;&nbsp;&nbsp;
+                            <input type="radio" disabled="@controlsDisabled" name="role" value=MANTAINER checked="@isMantainer" @onchange="() => HandleRadioButtonChange(MANTAINER)">
+                            @MANTAINER
+                        </label>
+
+
+                        <label>
+                            &nbsp;&nbsp;&nbsp;
+                            <input type="radio" disabled="@controlsDisabled" name="role" value=ADMIN checked="@isAdmin" @onchange="() => HandleRadioButtonChange(ADMIN)">
+                            @ADMIN
+                        </label>
+
+                    }
+                </div>
+                <div>
+                    <button class="btn-menu btn_blue" disabled="@controlsDisabled" @onclick="AddUser"><span>ADD<br>USER</span></button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+
+@code {
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+    private ClaimsPrincipal? owner;
+
+    private bool isUser { get; set; } = true;
+    private bool isMantainer { get; set; }
+    private bool isAdmin { get; set; }
+    private string userEmail { get; set; } = "";
+    private string userSecEmail { get; set; } = "";
+    private string userPhoneNumber { get; set; } = "";
+    private string userFullName { get; set; } = "";
+    private string userFirstTeamName { get; set; } = "";
+    private string userFirstTeamShortName { get; set; } = "";
+    private string userPassword { get; set; } = "";
+    private GestoreDb? gestoreDb;
+
+    private bool IsModalOpen = false;
+
+    private const string USER = "USER";
+    private const string MANTAINER = "MANTAINER";
+    private const string ADMIN = "ADMIN";
+
+    private bool controlsDisabled;
+
+    @inject IJSRuntime JsRuntime
+
+    public void ShowModal(ClaimsPrincipal myOwner)
+    {
+        IsModalOpen = true;
+        owner = myOwner;
+        isUser = true;
+        isMantainer = false;
+        isAdmin = false;
+        userEmail = "";
+        userSecEmail = "";
+        userPhoneNumber = "";
+        userFullName = "";
+        userFirstTeamName = "";
+        userFirstTeamShortName = "";
+        userPassword = "";
+        gestoreDb = new();
+        controlsDisabled = false;
+
+        StateHasChanged();
+    }
+
+    public void CloseModal()
+    {
+        IsModalOpen = false;
+        owner = null;
+        isUser = true;
+        isMantainer = false;
+        isAdmin = false;
+        userEmail = "";
+        userSecEmail = "";
+        userPhoneNumber = "";
+        userFullName = "";
+        userFirstTeamName = "";
+        userFirstTeamShortName = "";
+        userPassword = "";
+        gestoreDb = null;
+        controlsDisabled = false;
+        StateHasChanged();
+    }
+
+    private void HandleRadioButtonChange(string role)
+    {
+
+        if (role == USER)
+        {
+            isUser = true;
+            isMantainer = false;
+            isAdmin = false;
+        }
+        else if (role == MANTAINER)
+        {
+            isUser = false;
+            isMantainer = true;
+            isAdmin = false;
+        }
+        else if (role == ADMIN)
+        {
+            isUser = false;
+            isMantainer = false;
+            isAdmin = true;
+        }
+
+        // You can perform any additional logic here
+        // For example, you can call a C# method or perform JavaScript interop
+        // to interact with the browser's DOM or make AJAX requests.
+        // Here, I'll just log the selected gender to the console.
+
+        //JSRuntime.InvokeVoidAsync("console.log", $"Selected Gender: {SelectedGender}");
+    }
+
+    private async Task AddUser()
+    {
+        //freeze dei controlli
+        controlsDisabled = true;
+
+        try
+        {
+
+            await Task.Delay(1);
+
+            //Controllo consistenza mail
+            bool mailOk = IsValidEmail(userEmail);
+            bool secMailOk = IsValidEmail(userSecEmail);
+            if (!secMailOk && string.IsNullOrEmpty(userSecEmail))
+                secMailOk = true;
+            bool pwdOk = !string.IsNullOrEmpty(userPassword);
+
+            string roleString = "";
+            if (isUser)
+            {
+                roleString = USER;
+            }
+            else if (isMantainer)
+            {
+                roleString = MANTAINER;
+            }
+            else if (isAdmin)
+            {
+                roleString = ADMIN;
+            }
+
+            bool custOk = false;
+
+            if (isAdmin)
+            {
+                //Amministratore vede tutto, è inutile che passi customers puntuali
+                custOk = true;
+            }
+            
+            if (mailOk && pwdOk && custOk)
+            {
+                //Tutto ok, possiamo procedere alla creazione dell'utente
+                if (gestoreDb == null)
+                {
+                    gestoreDb = new();
+                }
+
+                Task<bool> creationTask = Task.Run(() => gestoreDb.SRMUserCreateGeneric(userEmail, userPassword, roleString, userSecEmail, userPhoneNumber, userFullName));
+                Task.WaitAll(creationTask);
+
+                if (creationTask != null)
+                {
+                    if (creationTask.Result)
+                    {
+                        JsRuntime.InvokeVoidAsync("alert", userEmail + " created correctly."); // Alert
+                        CloseModal();
+                    }
+                    else
+                    {
+                        JsRuntime.InvokeVoidAsync("alert", userEmail + " creation failed!"); // Alert
+                    }
+                }
+                else
+                {
+                    JsRuntime.InvokeVoidAsync("alert", "Creation failed!"); // Alert
+                }
+            }
+            else
+            {
+                //Creo messaggio di errore
+                string errMsg = "";
+                if (!mailOk)
+                {
+                    errMsg = "Please check email!\n";
+                }
+                if (!pwdOk)
+                {
+                    errMsg = errMsg + "Please check password!\n";
+                }
+                if (!custOk)
+                {
+                    errMsg = errMsg + "Please check customers attribution!";
+                }
+                JsRuntime.InvokeVoidAsync("alert", errMsg); // Alert
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Add user page AddUser error: " + ex.Message);
+        }
+
+        //scongelamento dei controlli
+        controlsDisabled = false;
+        //Richiedi l'aggiornamento del componente
+        StateHasChanged();
+        await OnSave.InvokeAsync();
+    }
+
+
+    private string GenerateRandomPassword(int length)
+    {
+        string[] randomChars = new[] {
+            "ABCDEFGHJKLMNOPQRSTUVWXYZ",    // uppercase
+            "abcdefghijkmnopqrstuvwxyz",    // lowercase
+            "0123456789",                   // digits
+            "!@#$%^&*()_-+=<>?"                        // non-alphanumeric
+        };
+
+        Random rand = new Random(Environment.TickCount);
+        List<char> chars = new List<char>();
+
+
+        chars.Insert(rand.Next(0, chars.Count),
+            randomChars[0][rand.Next(0, randomChars[0].Length)]);
+
+
+        chars.Insert(rand.Next(0, chars.Count),
+            randomChars[1][rand.Next(0, randomChars[1].Length)]);
+
+
+        chars.Insert(rand.Next(0, chars.Count),
+            randomChars[2][rand.Next(0, randomChars[2].Length)]);
+
+
+        chars.Insert(rand.Next(0, chars.Count),
+            randomChars[3][rand.Next(0, randomChars[3].Length)]);
+
+        for (int i = chars.Count; i < length
+            || chars.Distinct().Count() < 5; i++)
+        {
+            string rcs = randomChars[rand.Next(0, randomChars.Length)];
+            chars.Insert(rand.Next(0, chars.Count),
+                rcs[rand.Next(0, rcs.Length)]);
+        }
+
+        string password = new string(chars.ToArray());
+
+        return password;
+    }
+
+    private void CompileNewPassword()
+    {
+        try
+        {
+            userPassword = GenerateRandomPassword(10);
+            StateHasChanged();
+
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Add user page CompileNewPassword error: " + ex.Message);
+        }
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        try
+        {
+            // Normalize the domain
+            email = Regex.Replace(email, @"(@)(.+)$", DomainMapper,
+                                  RegexOptions.None, TimeSpan.FromMilliseconds(200));
+
+            // Examines the domain part of the email and normalizes it.
+            string DomainMapper(Match match)
+            {
+                // Use IdnMapping class to convert Unicode domain names.
+                var idn = new IdnMapping();
+
+                // Pull out and process domain name (throws ArgumentException on invalid)
+                string domainName = idn.GetAscii(match.Groups[2].Value);
+
+                return match.Groups[1].Value + domainName;
+            }
+        }
+        catch (RegexMatchTimeoutException e)
+        {
+            return false;
+        }
+        catch (ArgumentException e)
+        {
+            return false;
+        }
+
+        try
+        {
+            return Regex.IsMatch(email,
+                @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return false;
+        }
+    }
+}
+

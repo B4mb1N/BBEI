@@ -1,0 +1,50 @@
+﻿<div class="modal-overlay" style="display: @(IsModalOpen ? "block" : "none")" @onclick="CloseModal">
+    <div class="modal-content" @onclick:stopPropagation>
+        <div class="closeIcon"><span class="oi oi-x" aria-hidden="true" @onclick="CloseModal"></span></div>
+
+        <h4>Info</h4>
+
+        <table>
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <tr>
+                    <span class="oi oi-warning" style="color: darkgreen" aria-hidden="true">@error</span>
+                </tr>
+            }
+            else
+            {
+                <tr>
+                    <span class="oi oi-warning" style="color: darkgreen" aria-hidden="true">OK</span>
+                </tr>
+            }
+        </table>
+    </div>
+</div>
+
+@code {
+    private bool IsModalOpen = false;
+    private string error { get; set; }
+    private bool isAsync { get; set; }
+
+    public void ShowModal(string myError, bool async)
+    {
+        error = myError;
+        isAsync = async;
+        IsModalOpen = true;
+
+        if (isAsync)
+            InvokeAsync(StateHasChanged);
+        else
+            StateHasChanged();
+    }
+
+    public void CloseModal()
+    {
+        IsModalOpen = false;
+
+        if (isAsync)
+            InvokeAsync(StateHasChanged);
+        else
+            StateHasChanged();
+    }
+}
