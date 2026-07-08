@@ -28,6 +28,9 @@ namespace BBEIFrontend
 
                     Log.Information("Main Loop Enabled");
                     GestoreDb gestoreDb = new GestoreDb();
+
+
+                    first = false;
                 }
                 catch (Exception ex)
                 {

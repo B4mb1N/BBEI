@@ -216,16 +216,8 @@
             {
                 roleString = ADMIN;
             }
-
-            bool custOk = false;
-
-            if (isAdmin)
-            {
-                //Amministratore vede tutto, è inutile che passi customers puntuali
-                custOk = true;
-            }
             
-            if (mailOk && pwdOk && custOk)
+            if (mailOk && pwdOk)
             {
                 //Tutto ok, possiamo procedere alla creazione dell'utente
                 if (gestoreDb == null)
@@ -264,10 +256,6 @@
                 if (!pwdOk)
                 {
                     errMsg = errMsg + "Please check password!\n";
-                }
-                if (!custOk)
-                {
-                    errMsg = errMsg + "Please check customers attribution!";
                 }
                 JsRuntime.InvokeVoidAsync("alert", errMsg); // Alert
             }

@@ -1,0 +1,131 @@
+﻿@page "/Newexpectation"
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.Security.Claims;
+@using BBEIFrontend;
+@using Serilog;
+
+<PageTitle>New expectation</PageTitle>
+
+<h1>BB wants more..!</h1>
+
+<table class="bigTable">
+        <tr>
+            <td align="center">
+                <span>Data Ora</span>
+                <br />
+                <input type="date" @bind="selectedDate" /><input type="time" @bind="selectedTime" />
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <span>Domanda</span>
+                <br />
+                <textarea rows="5" value="@question" @oninput="Update_question" style="width: 90%; display: inline;" />
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <span>Aspettativa</span>
+                <br />
+                <textarea rows="5" value="@reply" @oninput="Update_reply" style="width: 90%; display: inline;" />
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <button class="btn-save btn_green" @onclick="DoInsert"><span>Insert</span></button>
+            </td>
+        </tr>
+</table>
+
+<ModalLoading @ref="modalLoadingPageRef" />
+
+@code {
+    private ClaimsPrincipal user { get; set; }
+    private ModalLoading modalLoadingPageRef;
+    private GestoreDb? gestoreDb;
+
+    private DateTime selectedDate = DateTime.Now;
+    private DateTime selectedTime = DateTime.Now;
+    private string sign = "";
+    private long idAuth = -1;
+    private string question = "";
+    private string reply = "";
+
+    @inject IJSRuntime JsRuntime
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+        gestoreDb = new GestoreDb();
+
+        if (user.Identity.IsAuthenticated)
+        {
+            idAuth = gestoreDb.GetIdAuthorFromAuthorName(user.Identity.Name);
+
+            if (idAuth == -1)
+            {
+                if (gestoreDb.AddNewAuthor(user.Identity.Name))
+                    idAuth = gestoreDb.GetIdAuthorFromAuthorName(user.Identity.Name);
+            }
+        }
+    }
+
+    private void Update_sign(ChangeEventArgs e)
+    {
+        sign = e.Value?.ToString();
+    }
+
+    private void Update_question(ChangeEventArgs e)
+    {
+        question = e.Value?.ToString();
+    }
+
+    private void Update_reply(ChangeEventArgs e)
+    {
+        reply = e.Value?.ToString();
+    }
+
+    private async Task DoInsert()
+    {
+        modalLoadingPageRef.ShowModal();
+
+        Dictionary<string, string> dict = new Dictionary<string, string>();
+        dict.Add("Question", question);
+        dict.Add("Reply", reply);
+        dict.Add("IdAuthor", idAuth.ToString());
+        dict.Add("DateFact", selectedDate.ToString("yyyy-MM-dd") + " " + selectedTime.ToString("HH:mm:ss.fff"));
+        var resp = await Task.Run(() => gestoreDb.insertRow("dbc_BBEIFacts", dict));
+
+        if (resp)
+        {
+            string outputMessage = string.Format("New Fact inserted!");
+            await JSRuntime.InvokeVoidAsync("alert", outputMessage);
+
+            question = "";
+            reply = "";
+            selectedDate = DateTime.Now;
+            selectedTime = DateTime.Now;
+        }
+        else
+        {
+            string outputMessage = string.Format("Error during fact inserting..!");
+            await JSRuntime.InvokeVoidAsync("alert", outputMessage);
+        }
+
+        // Richiedi l'aggiornamento del componente
+        StateHasChanged();
+        modalLoadingPageRef.CloseModal();
+    }
+
+    public void Dispose()
+    {
+
+    }
+
+    // Alcuni componenti Blazor richiedono l'iniezione di IJSRuntime
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }
+}

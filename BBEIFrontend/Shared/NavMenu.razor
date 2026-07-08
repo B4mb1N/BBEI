@@ -1,7 +1,7 @@
 ﻿@using System.Threading;
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="" @onclick="DoRefresh">FAS</a>
+        <a class="navbar-brand" href="" @onclick="DoRefresh">BBEI</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -15,57 +15,11 @@
                 <span class="oi oi-home" aria-hidden="true"></span> Home
             </NavLink>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="standings">
-                <span class="oi oi-graph" aria-hidden="true"></span> Classifiche
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="calendars">
-                <span class="oi oi-list" aria-hidden="true"></span> Calendario
-            </NavLink>
-        </div>
-        <AuthorizeView Roles="ADMIN, MANTAINER, USER">
+        <AuthorizeView Roles="MANTAINER,ADMIN">
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="inserttactics">
-                        <span class="oi oi-align-center" aria-hidden="true"></span> Inserisci Formazione
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Roles="ADMIN, MANTAINER, USER">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="teamsmanagement">
-                        <span class="oi oi-shield" aria-hidden="true"></span> Gestione Squadre
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Roles="ADMIN, MANTAINER">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="rostermanagement">
-                        <span class="oi oi-spreadsheet" aria-hidden="true"></span> Gestione Rose
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Roles="ADMIN, MANTAINER, USER">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="playerstrade">
-                        <span class="oi oi-euro" aria-hidden="true"></span> Mercato Giocatori
-                    </NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Roles="ADMIN, MANTAINER">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="auctionmanagement">
-                        <span class="oi oi-key" aria-hidden="true"></span> Gestione Aste
+                    <NavLink class="nav-link" href="newexpectation">
+                        <span class="oi oi-key" aria-hidden="true"></span> New expectation
                     </NavLink>
                 </div>
             </Authorized>
@@ -73,23 +27,8 @@
             <AuthorizeView Roles="ADMIN">
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="leaguemanagement">
-                        <span class="oi oi-key" aria-hidden="true"></span> Gestione Leagues
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="competitionmanagement">
-                        <span class="oi oi-key" aria-hidden="true"></span> Gestione Competitions
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
                     <NavLink class="nav-link" href="usermanagement">
                         <span class="oi oi-key" aria-hidden="true"></span> Gestione Utenti
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="notifymanagement">
-                        <span class="oi oi-key" aria-hidden="true"></span> Gestione Notifiche
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">

@@ -305,6 +305,13 @@ namespace BBEILib
             return l;
         }
 
+        public dbc_BBEIAuthors GetBBEIAuthorsByName(string name)
+        {
+            dbc_BBEIAuthors l = new dbc_BBEIAuthors();
+            l = ef_db.dbc_BBEIAuthors.FirstOrDefault(x => x.Name.ToLower().Trim() == name.ToLower().Trim());
+            return l;
+        }
+
         public bool SetFASTeamNew(string userId, string teamName, string teamShortName, bool active, out long teamId)
         {
             bool bRet = false;
@@ -1173,6 +1180,13 @@ namespace BBEILib
             }
 
             return bRet;
+        }
+
+        public dbc_BBEIFacts GetBBEIFactsRandom()
+        {
+            dbc_BBEIFacts l = new dbc_BBEIFacts();
+            l = ef_db.dbc_BBEIFacts.OrderBy(x => x).First();
+            return l;
         }
 
         public List<Dictionary<string, string>> LoadTableData(string tableName, out List<string> tableColumns)

@@ -7,49 +7,29 @@
 @using System.Reflection;
 @using BBEIFrontend;
 @using Serilog;
+@using BBEIDataAccess.Models;
 
 <PageTitle>HOME</PageTitle>
 
-<h1>FAS HOME PAGE</h1>
-<div style="width: 100%; text-align: right"><span>Ultima lettura dati </span></div>
+<h1>BB expecting it!</h1>
 
+<br />
+<br />
 <table class="bigTable">
-        <thead>
-            <tr>
-                <td>
-                    Giornata nr.
-                </td>
-                <td>
-                    Termine richieste giocatori
-                </td>
-                <td>
-                    Termine offerte aste
-                </td>
-                <td>
-                    Termine consegna formazioni
-                </td>
-            </tr>
-        </thead>
-        }
-    }
-    else
-    {
-        <span>Nessun dato letto</span>
-    }
+    <thead>
+        <tr>
+            <td>
+                <div class="qa-block">
+                    <p class="qa-question">@question</p>
+                    <p class="qa-reply">@reply</p>
+                    <p class="qa-meta">@author &middot; @ts</p>
+                </div>
+            </td>
+        </tr>
+    </thead>
 </table>
 
-<br />
-<div style="text-align: center;">
-    <label style="font-size: large; padding: 3px;">Termine per la consegna delle formazioni:</label>
-    <br />
-    <div style="background-color: #cceeff">
-        <label style="font-size: large; padding: 3px; font-weight: bolder;">@ddd.ToString()g</label>
-        <label style="font-size: large; padding: 3px; font-weight: bolder;">@dHH.ToString("D2"):@dmm.ToString("D2"):@dss.ToString("D2")</label>
-    </div>
-</div>
-
-<br />
-<p>Successive giornata di SERIE A</p>
+<button class="btn-save btn_green" @onclick="DoRefresh"><span>Refresh</span></button>
 
 <ModalLoading @ref="modalLoadingPageRef" />
 
@@ -57,41 +37,36 @@
     private ModalLoading modalLoadingPageRef;
     private GestoreDb? gestoreDb;
 
+    private string question = "";
+    private string reply = "";
+    private string author = "";
+    private DateTime ts = DateTime.Now;
+
     @inject IJSRuntime JsRuntime
-
-    private int refreshSecs = 60; //3600;
-    private long selectedRound;
-    private Dictionary<long, string> formattedAuctionTS = new();
-    private Dictionary<long, string> formattedBidTS = new();
-    private Dictionary<long, string> formattedStandingsTS = new();
-    private CultureInfo italianCulture = new CultureInfo("it-IT");
-
-    private int ddd = 0;
-    private int dHH = 0;
-    private int dmm = 0;
-    private int dss = 0;
-    private System.Threading.Timer timer;
 
     protected override async Task OnInitializedAsync()
     {
-
-        selectedRound = -1;
         gestoreDb = new GestoreDb();
 
-        timer = new System.Threading.Timer(UpdateCount, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        await DoRefresh();
     }
 
-    private void UpdateCount(object state)
+    private async Task DoRefresh()
     {
-        TimeSpan delta = new();
+        if (modalLoadingPageRef != null)
+            modalLoadingPageRef.ShowModal();
 
-        ddd = delta.Days;
-        dHH = delta.Hours > 24 ? delta.Hours % 24 : delta.Hours;
-        dmm = delta.Minutes > 60 ? delta.Minutes % 60 : delta.Minutes;
-        dss = delta.Seconds > 60 ? delta.Seconds % 60 : delta.Seconds;
+        dbc_BBEIFacts f = gestoreDb.getRandomFact();
+        
+        question = f.Question;
+        reply = f.Reply;
+        author = gestoreDb.getNameAuthorFromAuthorId(f.IdAuthor);
+        ts = f.DateFact;
 
         // Richiedi l'aggiornamento del componente
-        InvokeAsync(StateHasChanged);
+        StateHasChanged();
+        if (modalLoadingPageRef != null)
+            modalLoadingPageRef.CloseModal();
     }
 
     public void Dispose()

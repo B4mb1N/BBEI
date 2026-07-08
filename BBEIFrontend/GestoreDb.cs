@@ -571,6 +571,76 @@ namespace BBEIFrontend
             return bRet;
         }
 
+        public long GetIdAuthorFromAuthorName(string name)
+        {
+            long id = -1;
+            try
+            {
+                DbManager dbManager = new DbManager(Program.CoreIdentity.ConnectionString);
+                dbc_BBEIAuthors a = dbManager.GetBBEIAuthorsByName(name);
+                if (a != null)
+                    id = a.Id;
+            }
+            catch (Exception ex)
+            {
+                id = -1;
+                Log.Error("GetIdAuthorFromAuthorName error: " + ex.Message);
+            }
+            return id;
+        }
+
+        public string getNameAuthorFromAuthorId(long id)
+        {
+            string name = "";
+            try
+            {
+                DbManager dbManager = new DbManager(Program.CoreIdentity.ConnectionString);
+                dbc_BBEIAuthors a = dbManager.GetBBEIAuthorsById(id);
+                if (a != null)
+                    name = a.Name;
+            }
+            catch (Exception ex)
+            {
+                name = "";
+                Log.Error("getNameAuthorFromAuthorId error: " + ex.Message);
+            }
+            return name;
+        }
+
+        public bool AddNewAuthor(string name)
+        {
+            bool res = false;
+            try
+            {
+                DbManager dbManager = new DbManager(Program.CoreIdentity.ConnectionString);
+                Dictionary<string, string> d = new Dictionary<string, string>();
+                d.Add("Name", name);
+                res = dbManager.InsertRow("dbc_BBEIAuthors", d);
+            }
+            catch (Exception ex)
+            {
+                res = false;
+                Log.Error("AddNewAuthor error: " + ex.Message);
+            }
+            return res;
+        }
+
+        internal dbc_BBEIFacts getRandomFact()
+        {
+            dbc_BBEIFacts f = null;
+            try
+            {
+                DbManager dbManager = new DbManager(Program.CoreIdentity.ConnectionString);
+                f = dbManager.GetBBEIFactsRandom();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("getRandomFact error: " + ex.Message);
+            }
+
+            return f;
+        }
+
         internal List<string> getTableList()
         {
             List<string> tables = new List<string>();
