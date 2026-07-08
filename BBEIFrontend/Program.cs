@@ -14,7 +14,7 @@ namespace BBEIFrontend
 {
     public class Program
     {
-        public static string Version { get; set; } = "1.1.4";
+        public static string Version { get; set; } = "0.9.0";
 
         public static CoreIdentity CoreIdentity { get; set; } = new();
         public static ServiceProvider? ServiceProvider { get; set; }

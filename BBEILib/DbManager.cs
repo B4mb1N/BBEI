@@ -1184,9 +1184,18 @@ namespace BBEILib
 
         public dbc_BBEIFacts GetBBEIFactsRandom()
         {
-            dbc_BBEIFacts l = new dbc_BBEIFacts();
-            l = ef_db.dbc_BBEIFacts.OrderBy(x => x).First();
-            return l;
+            Random _rng = new Random();
+            int count = ef_db.dbc_BBEIFacts.Count();
+
+            if (count == 0)
+                return null; // oppure lancia un'eccezione a seconda della logica dell'app
+
+            int index = _rng.Next(count); // 0..count-1
+
+            return ef_db.dbc_BBEIFacts
+                .OrderBy(x => x.Id) // necessario per avere un ordinamento deterministico prima dello Skip
+                .Skip(index)
+                .First();
         }
 
         public List<Dictionary<string, string>> LoadTableData(string tableName, out List<string> tableColumns)
